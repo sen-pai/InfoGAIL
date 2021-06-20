@@ -503,3 +503,36 @@ class AIRL(AdversarialTrainer):
         super().__init__(
             venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
         )
+
+
+
+class WGAIL(AdversarialTrainer):
+    def __init__(
+        self,
+        venv: vec_env.VecEnv,
+        expert_data: Union[Iterable[Mapping], types.Transitions],
+        expert_batch_size: int,
+        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
+        *,
+        # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
+        discrim_kwargs: Optional[Mapping] = None,
+        **kwargs,
+    ):
+        """Generative Adversarial Imitation Learning with Wasserstein objective.
+
+        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
+        Additional parameters that `WGAIL` adds on top of its superclass initializer are
+        as follows:
+
+        Args:
+            discrim_kwargs: Optional keyword arguments to use while constructing the
+                DiscrimNetWGAIL.
+
+        """
+        discrim_kwargs = discrim_kwargs or {}
+        discrim = discrim_nets.DiscrimNetWGAIL(
+            venv.observation_space, venv.action_space, **discrim_kwargs
+        )
+        super().__init__(
+            venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
+        )

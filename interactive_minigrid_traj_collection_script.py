@@ -3,18 +3,15 @@ import numpy as np
 import time
 import argparse
 
-import matplotlib.pyplot as plt
-
 import gym
 import gym_minigrid
-from gym_minigrid import wrappers
 from gym_minigrid.window import Window
 
 from imitation.data.types import Trajectory
 
 import pickle5 as pickle
 
-from utils.env_utils import minigrid_get_env, minigrid_render
+from utils.env_utils import minigrid_get_env
 
 
 parser = argparse.ArgumentParser()
