@@ -78,7 +78,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-seed_everything(seed= 1)
+# seed_everything(seed= 1)
 
 save_path = "./logs/" + args.env + "/wgail/" + args.run + "/"
 os.makedirs(save_path, exist_ok=True)

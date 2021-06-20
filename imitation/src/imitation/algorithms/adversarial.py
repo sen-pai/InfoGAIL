@@ -534,5 +534,7 @@ class WGAIL(AdversarialTrainer):
             venv.observation_space, venv.action_space, **discrim_kwargs
         )
         super().__init__(
-            venv= venv, gen_algo=  gen_algo, discrim= discrim, expert_data= expert_data, expert_batch_size= expert_batch_size, disc_opt_cls = th.optim.RMSprop, **kwargs
+            venv= venv, gen_algo=  gen_algo, discrim= discrim, expert_data= expert_data, expert_batch_size= expert_batch_size, **kwargs
         )
+
+        # , disc_opt_cls = th.optim.RMSprop
