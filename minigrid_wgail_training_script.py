@@ -14,7 +14,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common import policies
 
 
-from utils.env_utils import minigrid_render, minigrid_get_env
+from utils.env_utils import seed_everything, minigrid_get_env
 import os, time
 import numpy as np
 
@@ -78,7 +78,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-save_path = "./logs/" + args.env + "/gail/" + args.run + "/"
+seed_everything(seed= 1)
+
+save_path = "./logs/" + args.env + "/wgail/" + args.run + "/"
 os.makedirs(save_path, exist_ok=True)
 traj_dataset_path = "./traj_datasets/" + args.traj_name + ".pkl"
 
@@ -105,11 +107,11 @@ gail_trainer = adversarial.WGAIL(
     expert_batch_size=32,
     gen_algo=base_ppo,
     n_disc_updates_per_round=1,
-    normalize_reward=False,
+    normalize_reward=True,
     normalize_obs=False
 )
 
-total_timesteps = 100000
+total_timesteps = 20000
 gail_trainer.train(total_timesteps=total_timesteps)
     # gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
 

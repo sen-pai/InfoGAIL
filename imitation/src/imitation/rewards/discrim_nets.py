@@ -401,7 +401,8 @@ class WassersteinDiscrimNet(DiscrimNet):
         gen_logits = th.masked_select(disc_logits_gen_is_high, labels_gen_is_one == 1)
 
         #reduce mean        
-        return (-gen_logits + expert_logits).mean()
+        loss = (-gen_logits + expert_logits).mean()
+        return loss
 class DiscrimNetWGAIL(WassersteinDiscrimNet):
     """The discriminator to use for GAIL."""
 
@@ -435,7 +436,7 @@ class DiscrimNetWGAIL(WassersteinDiscrimNet):
         else:
             self.discriminator = discrim_net
 
-        logging.info("using GAIL")
+        logging.info("using WGAIL")
 
     def logits_gen_is_high(
         self,
@@ -473,6 +474,7 @@ class DiscrimNetWGAIL(WassersteinDiscrimNet):
     ) -> th.Tensor:
         logits = self.logits_gen_is_high(state, action, next_state, done)
         rew = -(logits)
+        # print(rew)
         assert rew.shape == state.shape[:1]
         return rew
 
