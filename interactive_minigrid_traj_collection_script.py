@@ -121,13 +121,13 @@ def key_handler(event):
     if event.key == "left":
         # step(env.actions.left, 0)
         step(0)
-
         return
+
     if event.key == "right":
         # step(env.actions.right, 1)
         step(1)
-
         return
+
     if event.key == "up":
         # step(env.actions.forward, 2)
         step(2)
@@ -138,10 +138,12 @@ def key_handler(event):
         # step(env.actions.toggle, 5)
         step(5)
         return
+
     if event.key == "pageup":
         # step(env.actions.pickup, 3)
         step(3)
         return
+
     if event.key == "pagedown":
         # step(env.actions.drop, 4)
         step(4)
