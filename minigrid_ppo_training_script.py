@@ -72,7 +72,7 @@ if args.show and not args.flat:
 
 save_path = "./logs/" + args.env + "/ppo/" + args.run
 
-checkpoint_callback = CheckpointCallback(save_freq=1000, save_path=save_path)
+checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=save_path)
 callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=0.98, verbose=1)
 eval_callback = EvalCallback(
     eval_env,

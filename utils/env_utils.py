@@ -30,7 +30,7 @@ def minigrid_get_env(
         img_wrappers = lambda env: wrappers.ImgObsWrapper(
             wrappers.RGBImgPartialObsWrapper(env)
         )
-    flat_wrapper = lambda env: env_wrappers.FlatObsOnlyWrapper(env)
+    flat_wrapper = lambda env: wrappers.FlatObsWrapper(env)
 
     vec_env = make_vec_env(
         env_id=env,
