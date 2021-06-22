@@ -5,7 +5,7 @@ import gym
 import gym_minigrid
 import numpy as np
 import pickle5 as pickle
-import torch
+import torch as th
 from gym_minigrid import wrappers
 from imitation.algorithms import adversarial
 from imitation.data import rollout
@@ -78,7 +78,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-# seed_everything(seed= 1)
+seed_everything(seed= 10)
 
 save_path = "./logs/" + args.env + "/wgail/" + args.run + "/"
 os.makedirs(save_path, exist_ok=True)
@@ -97,21 +97,23 @@ train_env =  minigrid_get_env(args.env, 1, args.flat)
 
 policy_type = ActorCriticPolicy if args.flat else ActorCriticCnnPolicy
 
-base_ppo = PPO(policy_type, train_env, verbose=1, batch_size=32, n_steps=50)
+base_ppo = PPO(policy_type, train_env, verbose=1, batch_size=64, n_steps=50)
 
 logger.configure(save_path)
 
 gail_trainer = adversarial.WGAIL(
     train_env,
     expert_data=transitions,
-    expert_batch_size=32,
+    expert_batch_size=64,
     gen_algo=base_ppo,
-    n_disc_updates_per_round=1,
-    normalize_reward=True,
-    normalize_obs=False
+    n_disc_updates_per_round=5,
+    normalize_reward=False,
+    normalize_obs=False,
+    disc_opt_cls = th.optim.RMSprop, 
+    disc_opt_kwargs = {"lr":0.00005},
 )
 
-total_timesteps = 20000
+total_timesteps = 10000
 gail_trainer.train(total_timesteps=total_timesteps)
     # gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
 

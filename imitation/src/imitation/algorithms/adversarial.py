@@ -229,6 +229,10 @@ class AdversarialTrainer:
                 batch["done"],
                 batch["log_policy_act_prob"],
             )
+
+            for p in self.discrim.parameters():
+                p.data.clamp_(-0.01, 0.01)
+
             loss = self.discrim.disc_loss(disc_logits, batch["labels_gen_is_one"])
 
             # do gradient step
