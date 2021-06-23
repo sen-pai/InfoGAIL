@@ -16,7 +16,7 @@ Two new classes in ``src\imitation\rewards\discrim_nets.py``
 
 One new class in ``src\imitation\algorithms\adversarial.py``
 * ``WGAIL``: Core changes from ``GAIL`` class are ``DiscrimNetWGAIL`` as the discriminator and ``disc_opt_cls`` as RMSprop instead of Adam
-* One change in ``AdversarialTrainer`` class to include gradient clipping in the ``train_disc`` function
+* ``WassersteinAdversarialTrainer``: inherits ``AdversarialTrainer`` class to include gradient clipping in the ``train_disc`` function
 
 Sample test script for WGAIL: ``python .\minigrid_wgail_training_script.py -r testing_wgail -t minigrid_empty_right_down -f --vis-trained ``
 

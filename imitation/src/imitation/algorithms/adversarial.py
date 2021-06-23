@@ -156,9 +156,7 @@ class AdversarialTrainer:
 
         self.venv_buffering = wrappers.BufferingWrapper(self.venv)
         self.venv_norm_obs = vec_env.VecNormalize(
-            self.venv_buffering,
-            norm_reward=False,
-            norm_obs=normalize_obs,
+            self.venv_buffering, norm_reward=False, norm_obs=normalize_obs,
         )
 
         if debug_use_ground_truth:
@@ -230,9 +228,6 @@ class AdversarialTrainer:
                 batch["log_policy_act_prob"],
             )
 
-            for p in self.discrim.parameters():
-                p.data.clamp_(-0.01, 0.01)
-
             loss = self.discrim.disc_loss(disc_logits, batch["labels_gen_is_one"])
 
             # do gradient step
@@ -290,9 +285,7 @@ class AdversarialTrainer:
         self._gen_replay_buffer.store(gen_samples)
 
     def train(
-        self,
-        total_timesteps: int,
-        callback: Optional[Callable[[int], None]] = None,
+        self, total_timesteps: int, callback: Optional[Callable[[int], None]] = None,
     ) -> None:
         """Alternates between training the generator and discriminator.
 
@@ -509,8 +502,95 @@ class AIRL(AdversarialTrainer):
         )
 
 
+class WassersteinAdversarialTrainer(AdversarialTrainer):
+    def __init__(
+        self,
+        venv: vec_env.VecEnv,
+        expert_data: Union[Iterable[Mapping], types.Transitions],
+        expert_batch_size: int,
+        gen_algo: on_policy_algorithm.OnPolicyAlgorithm,
+        *,
+        discrim: discrim_nets.DiscrimNet,
+        # FIXME(sam) pass in discrim net directly; don't ask for kwargs indirectly
+        **kwargs,
+    ):
+        """
+        Most parameters are described in and passed to `AdversarialTrainer.__init__`.
+        This class just implements gradient clipping during the train disc step
+        """
+        super().__init__(
+            venv, gen_algo, discrim, expert_data, expert_batch_size, **kwargs
+        )
 
-class WGAIL(AdversarialTrainer):
+    def train_disc(
+        self,
+        *,
+        expert_samples: Optional[Mapping] = None,
+        gen_samples: Optional[Mapping] = None,
+    ) -> Dict[str, float]:
+        """Perform a single discriminator update, optionally using provided samples.
+
+        Args:
+            expert_samples: Transition samples from the expert in dictionary form.
+                If provided, must contain keys corresponding to every field of the
+                `Transitions` dataclass except "infos". All corresponding values can be
+                either NumPy arrays or Tensors. Extra keys are ignored. Must contain
+                `self.expert_batch_size` samples.
+
+                If this argument is not provided, then `self.expert_batch_size` expert
+                samples from `self.expert_data_loader` are used by default.
+            gen_samples: Transition samples from the generator policy in same dictionary
+                form as `expert_samples`. If provided, must contain exactly
+                `self.expert_batch_size` samples. If not provided, then take
+                `len(expert_samples)` samples from the generator replay buffer.
+
+        Returns:
+           dict: Statistics for discriminator (e.g. loss, accuracy).
+        """
+        with logger.accumulate_means("disc"):
+            # optionally write TB summaries for collected ops
+            write_summaries = self._init_tensorboard and self._global_step % 20 == 0
+
+            # compute loss
+            batch = self._make_disc_train_batch(
+                gen_samples=gen_samples, expert_samples=expert_samples
+            )
+            disc_logits = self.discrim.logits_gen_is_high(
+                batch["state"],
+                batch["action"],
+                batch["next_state"],
+                batch["done"],
+                batch["log_policy_act_prob"],
+            )
+
+            # ONLY addition
+            for p in self.discrim.parameters():
+                p.data.clamp_(-0.01, 0.01)
+
+            loss = self.discrim.disc_loss(disc_logits, batch["labels_gen_is_one"])
+
+            # do gradient step
+            self._disc_opt.zero_grad()
+            loss.backward()
+            self._disc_opt.step()
+            self._disc_step += 1
+
+            # compute/write stats and TensorBoard data
+            with th.no_grad():
+                train_stats = rew_common.compute_train_stats(
+                    disc_logits, batch["labels_gen_is_one"], loss
+                )
+            logger.record("global_step", self._global_step)
+            for k, v in train_stats.items():
+                logger.record(k, v)
+            logger.dump(self._disc_step)
+            if write_summaries:
+                self._summary_writer.add_histogram("disc_logits", disc_logits.detach())
+
+        return train_stats
+
+
+class WGAIL(WassersteinAdversarialTrainer):
     def __init__(
         self,
         venv: vec_env.VecEnv,
@@ -538,7 +618,12 @@ class WGAIL(AdversarialTrainer):
             venv.observation_space, venv.action_space, **discrim_kwargs
         )
         super().__init__(
-            venv= venv, gen_algo=  gen_algo, discrim= discrim, expert_data= expert_data, expert_batch_size= expert_batch_size, **kwargs
+            venv=venv,
+            gen_algo=gen_algo,
+            discrim=discrim,
+            expert_data=expert_data,
+            expert_batch_size=expert_batch_size,
+            **kwargs,
         )
 
         # , disc_opt_cls = th.optim.RMSprop
