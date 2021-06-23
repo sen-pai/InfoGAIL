@@ -16,3 +16,8 @@ Two new classes in ``src\imitation\rewards\discrim_nets.py``
 
 One new class in ``src\imitation\algorithms\adversarial.py``
 * ``WGAIL``: Core changes from ``GAIL`` class are ``DiscrimNetWGAIL`` as the discriminator and ``disc_opt_cls`` as RMSprop instead of Adam
+* One change in ``AdversarialTrainer`` class to include gradient clipping in the ``train_disc`` function
+
+Sample test script for WGAIL: ``python .\minigrid_wgail_training_script.py -r testing_wgail -t minigrid_empty_right_down -f --vis-trained ``
+
+Policy was consistent even if env was changed from "MiniGrid-Empty-6x6-v0" to "MiniGrid-Empty-8x8-v0" and "MiniGrid-Empty-5x5-v0" while testing

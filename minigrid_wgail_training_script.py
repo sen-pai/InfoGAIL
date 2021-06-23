@@ -113,7 +113,7 @@ gail_trainer = adversarial.WGAIL(
     disc_opt_kwargs = {"lr":0.00005},
 )
 
-total_timesteps = 10000
+total_timesteps = 8000
 gail_trainer.train(total_timesteps=total_timesteps)
     # gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
 
@@ -121,15 +121,19 @@ gail_trainer.train(total_timesteps=total_timesteps)
     #     pickle.dump(gail_trainer.discrim, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
+# new_train_env = minigrid_get_env("MiniGrid-Empty-5x5-v0", 1, args.flat)
+
+new_train_env = minigrid_get_env("MiniGrid-Empty-8x8-v0", 1, args.flat)
+
 
 if args.vis_trained:
     for traj in range(10):
-        obs = train_env.reset()
-        train_env.render()
+        obs = new_train_env.reset()
+        new_train_env.render()
         for i in range(20):
             action, _ = gail_trainer.gen_algo.predict(obs, deterministic=True)
-            obs, reward, done, info = train_env.step(action)
-            train_env.render()
+            obs, reward, done, info = new_train_env.step(action)
+            new_train_env.render()
             if done:
                 break
         print("done")
