@@ -4,6 +4,7 @@ from typing import Optional
 
 import gym
 import numpy as np
+from numpy.core.fromnumeric import mean
 import torch as th
 import torch.nn.functional as F
 from stable_baselines3.common import preprocessing
@@ -358,3 +359,122 @@ class DiscrimNetGAIL(DiscrimNet):
         rew = -F.logsigmoid(logits)
         assert rew.shape == state.shape[:1]
         return rew
+
+
+class WassersteinDiscrimNet(DiscrimNet):
+    """The discriminator to use for GAIL."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        scale: bool = False,
+    ):
+        """Construct discriminator network.
+
+        Args:
+          observation_space: observation space for this environment.
+          action_space: action space for this environment:
+          discrim_net: a Torch module that takes an observation and action
+            tensor as input, then computes the logits for GAIL.
+          scale: should inputs be rescaled according to declared observation
+            space bounds?
+        """
+        super().__init__(
+            observation_space=observation_space, action_space=action_space, scale=scale
+        )
+    
+    def disc_loss(self, disc_logits_gen_is_high, labels_gen_is_one) -> th.Tensor:
+        """Compute wasserstein discriminator loss.
+
+        Args:
+            disc_logits_gen_is_high: discriminator logits, as produced by
+                `logits_gen_is_high`.
+            labels_gen_is_one: integer labels, with zero for expert and one for
+                generator (novice).
+
+        Returns:
+            loss: scalar-valued discriminator loss."""
+
+        #distinguish expert and gen logits based on labels
+        expert_logits = th.masked_select(disc_logits_gen_is_high, labels_gen_is_one == 0)
+        gen_logits = th.masked_select(disc_logits_gen_is_high, labels_gen_is_one == 1)
+
+        #reduce mean        
+        loss = (-gen_logits + expert_logits).mean()
+        return loss
+class DiscrimNetWGAIL(WassersteinDiscrimNet):
+    """The discriminator to use for GAIL."""
+
+    def __init__(
+        self,
+        observation_space: gym.Space,
+        action_space: gym.Space,
+        discrim_net: Optional[nn.Module] = None,
+        scale: bool = False,
+    ):
+        """Construct discriminator network.
+
+        Args:
+          observation_space: observation space for this environment.
+          action_space: action space for this environment:
+          discrim_net: a Torch module that takes an observation and action
+            tensor as input, then computes the logits for GAIL.
+          scale: should inputs be rescaled according to declared observation
+            space bounds?
+        """
+        super().__init__(
+            observation_space=observation_space, action_space=action_space, scale=scale
+        )
+
+        if discrim_net is None:
+            self.discriminator = ActObsMLP(
+                action_space=action_space,
+                observation_space=observation_space,
+                hid_sizes=(32, 32),
+            )
+        else:
+            self.discriminator = discrim_net
+
+        logging.info("using WGAIL")
+
+    def logits_gen_is_high(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+        log_policy_act_prob: Optional[th.Tensor] = None,
+    ) -> th.Tensor:
+        """Compute the discriminator's logits for each state-action sample.
+
+        A high value corresponds to predicting generator, and a low value corresponds to
+        predicting expert.
+        """
+        logits = self.discriminator(state, action)
+        return logits
+
+    def reward_test(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        rew = self.reward_train(state, action, next_state, done)
+        assert rew.shape == state.shape[:1]
+        return rew
+
+    def reward_train(
+        self,
+        state: th.Tensor,
+        action: th.Tensor,
+        next_state: th.Tensor,
+        done: th.Tensor,
+    ) -> th.Tensor:
+        logits = self.logits_gen_is_high(state, action, next_state, done)
+        rew = -(logits)
+        # print(rew)
+        assert rew.shape == state.shape[:1]
+        return rew
+

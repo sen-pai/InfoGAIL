@@ -5,7 +5,7 @@ import gym
 import gym_minigrid
 import numpy as np
 import pickle5 as pickle
-import torch
+import torch as th
 from gym_minigrid import wrappers
 from imitation.algorithms import adversarial
 from imitation.data import rollout
@@ -14,7 +14,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common import policies
 
 
-from utils.env_utils import minigrid_render, minigrid_get_env
+from utils.env_utils import seed_everything, minigrid_get_env
 import os, time
 import numpy as np
 
@@ -78,7 +78,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-save_path = "./logs/" + args.env + "/gail/" + args.run + "/"
+seed_everything(seed= 10)
+
+save_path = "./logs/" + args.env + "/wgail/" + args.run + "/"
 os.makedirs(save_path, exist_ok=True)
 traj_dataset_path = "./traj_datasets/" + args.traj_name + ".pkl"
 
@@ -95,21 +97,23 @@ train_env =  minigrid_get_env(args.env, 1, args.flat)
 
 policy_type = ActorCriticPolicy if args.flat else ActorCriticCnnPolicy
 
-base_ppo = PPO(policy_type, train_env, verbose=1, batch_size=32, n_steps=50)
+base_ppo = PPO(policy_type, train_env, verbose=1, batch_size=64, n_steps=50)
 
 logger.configure(save_path)
 
 gail_trainer = adversarial.WGAIL(
     train_env,
     expert_data=transitions,
-    expert_batch_size=32,
+    expert_batch_size=64,
     gen_algo=base_ppo,
-    n_disc_updates_per_round=1,
+    n_disc_updates_per_round=5,
     normalize_reward=False,
-    normalize_obs=False
+    normalize_obs=False,
+    disc_opt_cls = th.optim.RMSprop, 
+    disc_opt_kwargs = {"lr":0.00005},
 )
 
-total_timesteps = 100000
+total_timesteps = 8000
 gail_trainer.train(total_timesteps=total_timesteps)
     # gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
 
@@ -117,15 +121,19 @@ gail_trainer.train(total_timesteps=total_timesteps)
     #     pickle.dump(gail_trainer.discrim, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
+# new_train_env = minigrid_get_env("MiniGrid-Empty-5x5-v0", 1, args.flat)
+
+new_train_env = minigrid_get_env("MiniGrid-Empty-8x8-v0", 1, args.flat)
+
 
 if args.vis_trained:
     for traj in range(10):
-        obs = train_env.reset()
-        train_env.render()
+        obs = new_train_env.reset()
+        new_train_env.render()
         for i in range(20):
             action, _ = gail_trainer.gen_algo.predict(obs, deterministic=True)
-            obs, reward, done, info = train_env.step(action)
-            train_env.render()
+            obs, reward, done, info = new_train_env.step(action)
+            new_train_env.render()
             if done:
                 break
         print("done")
