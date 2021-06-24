@@ -9,6 +9,7 @@ We have kept only necessary files from the imitation repository.
 
 
 
+
 #### Changes for WGAIL 
 Two new classes in ``src\imitation\rewards\discrim_nets.py``
 * ``WassersteinDiscrimNet``: Inherits ``DiscrimNet`` and overwrites ``disc_loss`` that implements the Wasserstein loss to train the discriminator
@@ -21,3 +22,10 @@ Two new classes in ``src\imitation\algorithms\adversarial.py``
 Sample test script for WGAIL: ``python .\minigrid_wgail_training_script.py -r testing_wgail -t minigrid_empty_right_down -f --vis-trained ``
 
 Policy was consistent even if env was changed from "MiniGrid-Empty-6x6-v0" to "MiniGrid-Empty-8x8-v0" and "MiniGrid-Empty-5x5-v0" while testing
+
+### Additional Modules for CNN-GAIL
+To avoid any more core changes to the imitation library, all classes needed to execute a CNN version of GAIL and WGAIL are saved in the ``cnn_modules`` folder.
+
+Two new discriminator classes in ``cnn_modules/cnn_discriminator.py``
+* ``ActObsCNN``: uses a NaturCNN backbone from stable-baselines 3 to extract features from an image observation. Obs features are concatenated with the action and rest is as ``ActObsMLP`` would work. 
+* ``ObsOnlyCNN``: same as ``ActObsCNN``, no action is used.
