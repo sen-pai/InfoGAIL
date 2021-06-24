@@ -23,7 +23,7 @@ Sample test script for WGAIL: ``python .\minigrid_wgail_training_script.py -r te
 
 Policy was consistent even if env was changed from "MiniGrid-Empty-6x6-v0" to "MiniGrid-Empty-8x8-v0" and "MiniGrid-Empty-5x5-v0" while testing
 
-### Additional Modules for CNN-GAIL
+#### Additional Modules for CNN-GAIL
 To avoid any more core changes to the imitation library, all classes needed to execute a CNN version of GAIL and WGAIL are saved in the ``cnn_modules`` folder.
 
 Two new discriminator classes in ``cnn_modules/cnn_discriminator.py``
