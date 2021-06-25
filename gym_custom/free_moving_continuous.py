@@ -8,8 +8,8 @@ from imitation.data.types import Trajectory
 import pickle5 as pickle
 
 class FreeMovingContinuous(gym.Env):
-  
-  def __init__(self, speed = 3, framestack = 4, max_steps = np.inf, window_dim = 300):
+
+  def __init__(self, speed = 7, framestack = 4, max_steps = np.inf, window_dim = 300):
     super(FreeMovingContinuous, self).__init__()
     self.window_dim = window_dim
     self.framestack = framestack
@@ -35,7 +35,6 @@ class FreeMovingContinuous(gym.Env):
 
     self.agent_pos += self.speed*action/action_magnitude
     self.agent_pos = np.clip(self.agent_pos, -self.window_dim, self.window_dim)
-    
 
     self.obs_list.append(dc(self.agent_pos))
 
@@ -78,7 +77,6 @@ class FreeMovingContinuous(gym.Env):
   def getMagnitude(self, a):
     return (a[0]**2 + a[1]**2)**0.5
 
-
   def generateCircleTraj(self, traj_length, radius = 100, direction = [0, -1], noise = 0.5, render = True):
     
     direction = np.array(direction)
@@ -96,7 +94,6 @@ class FreeMovingContinuous(gym.Env):
     obs_list.append(obs)
 
     for i in range(traj_length):
-
       #Calculating Normal
       normal = self.agent_pos - center
       if self.getMagnitude(normal)>radius:
@@ -137,8 +134,36 @@ class FreeMovingContinuous(gym.Env):
     return traj_dataset
 
 
+
+class CoverAllTargets(FreeMovingContinuous):
+  def __init__(self, **kwargs):
+    super().__init__(**kwargs)
+    self.radius = 100
+    self.center = np.array([0,-100])
+    
+    self.targets = np.array([[70,70]])#np.array([[50,-50], [100,-100], [50,-150], [0,-200], [-50,-150], [-100,-100], [-50,-50], [0,0]])
+    self.target_iter = 0
+
+  def step(self, action):
+    obs, reward, done, info = super(CoverAllTargets, self).step(action)
+
+    if self.target_iter < len(self.targets) and self.getMagnitude(self.agent_pos-self.targets[self.target_iter])<20:
+      reward = 5
+      self.target_iter += 1
+    
+    if self.target_iter >= len(self.targets):
+      done = True
+
+    return obs, reward, done, info
+
+  def reset(self):
+    obs = super(CoverAllTargets, self).reset()
+    self.target_iter = 0
+    
+    return obs
+
 if __name__=="__main__":
-  env = FreeMovingContinuous()
+  env = CoverAllTargets()
   traj_dataset = env.generateCircleTraj(1000)  
 
   # with open('traj_datasets/free_moving_circle.pkl', 'wb') as handle:
