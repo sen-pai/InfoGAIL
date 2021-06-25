@@ -6,10 +6,6 @@ Core changes to the imitation repository v0.2.0 are done to implement InfoGAIL
 We have kept only necessary files from the imitation repository. 
 
 
-
-
-
-
 #### Changes for WGAIL 
 Two new classes in ``src\imitation\rewards\discrim_nets.py``
 * ``WassersteinDiscrimNet``: Inherits ``DiscrimNet`` and overwrites ``disc_loss`` that implements the Wasserstein loss to train the discriminator
@@ -29,3 +25,6 @@ To avoid any more core changes to the imitation library, all classes needed to e
 Two new discriminator classes in ``cnn_modules/cnn_discriminator.py``
 * ``ActObsCNN``: uses a NaturCNN backbone from stable-baselines 3 to extract features from an image observation. Obs features are concatenated with the action and rest is as ``ActObsMLP`` would work. 
 * ``ObsOnlyCNN``: same as ``ActObsCNN``, no action is used.
+
+To use the CNN version of GAIL or WGAIL, exclude the ``-f`` arg. 
+A sample test script for CNN-GAIL: ``python .\minigrid_gail_training_script.py -r testing_cnngail -t img_no_stack_minigrid_empty_down_right --vis-trained ``
