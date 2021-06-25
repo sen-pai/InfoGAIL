@@ -3,39 +3,32 @@ import os
 
 import gym
 import gym_minigrid
+from gym_minigrid import wrappers
+
 import numpy as np
 import pickle5 as pickle
 import torch
-from gym_minigrid import wrappers
+
+from imitation.rewards.discrim_nets import ActObsMLP
 from imitation.algorithms import adversarial
 from imitation.data import rollout
 from imitation.util import logger, util
+from imitation.algorithms import bc
+
 from stable_baselines3 import PPO
-from stable_baselines3.common import policies
+from stable_baselines3.common.policies import ActorCriticCnnPolicy, ActorCriticPolicy
 
 
-from utils.env_utils import minigrid_render, minigrid_get_env
-import os, time
-import numpy as np
+from utils.env_utils import minigrid_get_env
+from cnn_modules.cnn_discriminator import ActObsCNN
 
 import argparse
 
 import matplotlib.pyplot as plt
 
 
-import pickle5 as pickle
-from imitation.data import rollout
-from imitation.util import logger, util
-from imitation.algorithms import bc
-
-import gym
-import gym_minigrid
-
-
-from stable_baselines3.common.policies import ActorCriticCnnPolicy, ActorCriticPolicy
-
-
 import argparse
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -83,39 +76,49 @@ os.makedirs(save_path, exist_ok=True)
 traj_dataset_path = "./traj_datasets/" + args.traj_name + ".pkl"
 
 print(f"Expert Dataset: {args.traj_name}")
-
-
 with open(traj_dataset_path, "rb") as f:
     trajectories = pickle.load(f)
 
 transitions = rollout.flatten_trajectories(trajectories)
 
+train_env = minigrid_get_env(args.env, 1, args.flat)
 
-train_env =  minigrid_get_env(args.env, 1, args.flat)
+if args.flat:
+    discrim_type = ActObsMLP(
+        action_space=train_env.action_space,
+        observation_space=train_env.observation_space,
+        hid_sizes=(32, 32),
+    )
+    policy_type = ActorCriticPolicy
+else:
+    discrim_type = ActObsCNN(
+        action_space=train_env.action_space,
+        observation_space=train_env.observation_space,
+    )
+    policy_type = ActorCriticCnnPolicy
 
-policy_type = ActorCriticPolicy if args.flat else ActorCriticCnnPolicy
-
-base_ppo = PPO(policy_type, train_env, verbose=1, batch_size=32, n_steps=50)
+base_ppo = PPO(policy_type, train_env, verbose=1, batch_size=64, n_steps=50)
 
 logger.configure(save_path)
 
 gail_trainer = adversarial.GAIL(
     train_env,
     expert_data=transitions,
-    expert_batch_size=32,
+    expert_batch_size=64,
     gen_algo=base_ppo,
     n_disc_updates_per_round=1,
     normalize_reward=False,
-    normalize_obs=False
+    normalize_obs=False,
+    disc_opt_kwargs = {"lr":0.0001},
+    discrim_kwargs={"discrim_net": discrim_type},
 )
 
 total_timesteps = 100000
 gail_trainer.train(total_timesteps=total_timesteps)
-    # gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
+# gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
 
-    # with open('discrims/gail_discrim'+str(i)+'.pkl', 'wb') as handle:
-    #     pickle.dump(gail_trainer.discrim, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+# with open('discrims/gail_discrim'+str(i)+'.pkl', 'wb') as handle:
+#     pickle.dump(gail_trainer.discrim, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if args.vis_trained:

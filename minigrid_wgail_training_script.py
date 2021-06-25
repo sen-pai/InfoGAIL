@@ -32,8 +32,10 @@ import gym
 import gym_minigrid
 
 
+from imitation.rewards.discrim_nets import ActObsMLP
 from stable_baselines3.common.policies import ActorCriticCnnPolicy, ActorCriticPolicy
 
+from cnn_modules.cnn_discriminator import ActObsCNN
 
 import argparse
 
@@ -95,13 +97,25 @@ transitions = rollout.flatten_trajectories(trajectories)
 
 train_env =  minigrid_get_env(args.env, 1, args.flat)
 
-policy_type = ActorCriticPolicy if args.flat else ActorCriticCnnPolicy
+if args.flat:
+    discrim_type = ActObsMLP(
+        action_space=train_env.action_space,
+        observation_space=train_env.observation_space,
+        hid_sizes=(32, 32),
+    )
+    policy_type = ActorCriticPolicy
+else:
+    discrim_type = ActObsCNN(
+        action_space=train_env.action_space,
+        observation_space=train_env.observation_space,
+    )
+    policy_type = ActorCriticCnnPolicy
 
 base_ppo = PPO(policy_type, train_env, verbose=1, batch_size=64, n_steps=50)
 
 logger.configure(save_path)
 
-gail_trainer = adversarial.WGAIL(
+wgail_trainer = adversarial.WGAIL(
     train_env,
     expert_data=transitions,
     expert_batch_size=64,
@@ -111,14 +125,15 @@ gail_trainer = adversarial.WGAIL(
     normalize_obs=False,
     disc_opt_cls = th.optim.RMSprop, 
     disc_opt_kwargs = {"lr":0.00005},
+    discrim_kwargs={"discrim_net": discrim_type},
 )
 
 total_timesteps = 8000
-gail_trainer.train(total_timesteps=total_timesteps)
-    # gail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
+wgail_trainer.train(total_timesteps=total_timesteps)
+    # wgail_trainer.gen_algo.save("gens/gail_gen_"+str(i))
 
     # with open('discrims/gail_discrim'+str(i)+'.pkl', 'wb') as handle:
-    #     pickle.dump(gail_trainer.discrim, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    #     pickle.dump(wgail_trainer.discrim, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 # new_train_env = minigrid_get_env("MiniGrid-Empty-5x5-v0", 1, args.flat)
@@ -131,7 +146,7 @@ if args.vis_trained:
         obs = new_train_env.reset()
         new_train_env.render()
         for i in range(20):
-            action, _ = gail_trainer.gen_algo.predict(obs, deterministic=True)
+            action, _ = wgail_trainer.gen_algo.predict(obs, deterministic=True)
             obs, reward, done, info = new_train_env.step(action)
             new_train_env.render()
             if done:
