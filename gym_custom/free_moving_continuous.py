@@ -141,7 +141,7 @@ class CoverAllTargets(FreeMovingContinuous):
     self.radius = 100
     self.center = np.array([0,-100])
     
-    self.targets = np.array([[70,70]])#np.array([[50,-50], [100,-100], [50,-150], [0,-200], [-50,-150], [-100,-100], [-50,-50], [0,0]])
+    self.targets =  np.array([[70,70]]) #np.array([[50,-50], [100,-100], [50,-150], [0,-200], [-50,-150], [-100,-100], [-50,-50], [0,0]]) 
     self.target_iter = 0
 
   def step(self, action):
@@ -164,7 +164,7 @@ class CoverAllTargets(FreeMovingContinuous):
 
 if __name__=="__main__":
   env = CoverAllTargets()
-  traj_dataset = env.generateCircleTraj(1000)  
+  traj_dataset = env.generateCircleTraj(100, radius= 50)  
 
   # with open('traj_datasets/free_moving_circle.pkl', 'wb') as handle:
   #   pickle.dump(traj_dataset, handle, protocol=pickle.HIGHEST_PROTOCOL)
